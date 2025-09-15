@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { pdfToQuestions } from '@/lib/pdfQuiz';
 import { createSessionFromQuestions } from '@/lib/sessionStore';
-import type { Question } from '@/lib/types';
 
 export default function UploadPage() {
   const router = useRouter();
