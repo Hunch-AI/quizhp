@@ -151,7 +151,7 @@
       }
 
       // ---- Standard End Game Screen (required) ----
-      // Call engine.end(true|false) to show it.
+      // Call engine.end(true|false, explanation?) to show it.
       function drawEndScreen(ctx, theme, result) {
         const W = ctx.canvas.width, H = ctx.canvas.height;
         ctx.globalAlpha = 0.95;
@@ -260,7 +260,7 @@ Fallback if register isn’t available:
 
 ENGINE BASICS:
   engine.canvas (720x540), engine.ctx, engine.theme.{bg,panel,ink,muted,accent,good,bad,border}
-  engine.end(true|false) → shows "Correct"/"Incorrect" + "Press R for restart"
+  engine.end(true|false, explanation?) → shows "Correct"/"Incorrect" + "Press R for restart" and sends explanation to parent
   engine.question?.choices -> [{ text, is_correct, explanation }]
   DO NOT render the question prompt or generic instructions — only choices’ text if you need it.
 
@@ -276,7 +276,10 @@ INPUT & CLEANUP:
 
 QUIZ-LIKE GAMES:
   • You may display ONLY choices[i].text.
-  • On selection: engine.end(choices[i].is_correct === true). End on any choice.
+  • On selection, include the explanation so the host app can show feedback. Either of:
+    - engine.end(ok, choices[i].explanation)
+    - window.__report(i, ok, choices[i].explanation); engine.end(ok)
+    where ok = choices[i].is_correct === true and i is the selected index.
 
 EMOJIS / SHAPES:
   • Use emojis (🪙💥) as sprites via fillText, or shapes (rect/arc/lines).
@@ -294,10 +297,22 @@ LOOP RULE:
   //   init(e){ /* setup state, add listeners; set e._cleanup */
     //   update(dt,e){ /* move/animate using dt */ },
     //   draw(ctx,e){ /* render; only choices’ text if applicable */ },
-    //   keydown(ev,e){ /* handle input; call e.end(true/false) to finish */ }
+    //   keydown(ev,e){ /* handle input; call engine.end(true/false, explanation) to finish */ }
     // });
 
     // WRITE YOUR CODE HERE
+
+    // Example helper for MCQ selection handling (optional):
+    // function selectAnswer(e, i){
+    //   const ch = e.question?.choices?.[i];
+    //   if (!ch) return;
+    //   const ok = !!ch.is_correct;
+    //   const expl = ch.explanation || '';
+    //   // Either approach works; keep one:
+    //   // window.__report && window.__report(i, ok, expl);
+    //   // engine.end(ok);
+    //   engine.end(ok, expl);
+    // }
 
 
   </script>
