@@ -66,7 +66,7 @@ export default function GameShell({
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Feedback</div>
             <p style={{ fontSize: 14, opacity: 0.85, margin: 0 }}>
               {feedback
-                ? (feedback.isCorrect ? '✅ Correct. ' : '❌ Incorrect. ') +
+                ? (feedback.isCorrect ? '✅' : '❌') +
                 (feedback.explanation || '')
                 : 'Play the game — your feedback will appear here when you make a selection.'}
             </p>
