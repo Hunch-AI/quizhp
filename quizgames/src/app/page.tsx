@@ -293,9 +293,22 @@ export default function UploadPage() {
                 fontSize: 16,
                 cursor: loading ? "default" : "pointer",
                 boxShadow: "0 8px 24px rgba(138,180,248,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
               }}
             >
-              {loading ? "Generating…" : "Generate games"}
+              {loading ? (
+                <>
+                  <div className="game-loading-spinner">
+                    🎮
+                  </div>
+                  Generating games…
+                </>
+              ) : (
+                "Generate games"
+              )}
             </button>
           )}
         </div>
@@ -329,6 +342,35 @@ export default function UploadPage() {
             grid-template-columns: 1fr;
             gap: 24px;
             padding: 32px 16px;
+          }
+        }
+        
+        .game-loading-spinner {
+          animation: gameSpin 1.2s ease-in-out infinite;
+          display: inline-block;
+          font-size: 18px;
+        }
+        
+        @keyframes gameSpin {
+          0% { 
+            transform: rotate(0deg) scale(1);
+            filter: hue-rotate(0deg);
+          }
+          25% { 
+            transform: rotate(90deg) scale(1.1);
+            filter: hue-rotate(90deg);
+          }
+          50% { 
+            transform: rotate(180deg) scale(1);
+            filter: hue-rotate(180deg);
+          }
+          75% { 
+            transform: rotate(270deg) scale(1.1);
+            filter: hue-rotate(270deg);
+          }
+          100% { 
+            transform: rotate(360deg) scale(1);
+            filter: hue-rotate(360deg);
           }
         }
       `}</style>
