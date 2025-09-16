@@ -107,7 +107,7 @@ export default function UploadPage() {
         color: "var(--ink)",
         display: "grid",
         gridTemplateColumns: "0.8fr 1.2fr",
-        gap: 16,
+        gap: 12,
         alignItems: "center",
         padding: "48px 24px",
         overflow: "hidden",
@@ -124,8 +124,8 @@ export default function UploadPage() {
       >
         <div
           style={{
-            width: "min(520px, 90%)",
-            aspectRatio: "9/16",
+            width: "600px",
+            height: "540px",
             borderRadius: 28,
             overflow: "hidden",
             boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
@@ -133,16 +133,21 @@ export default function UploadPage() {
             background: "black",
           }}
         >
-          <video
-            src="/videos/placeholder-loop.mp4" // ← replace with your file
-            autoPlay
-            loop
-            muted
-            playsInline
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          >
-            Your browser does not support the video tag.
-          </video>
+          <iframe
+            src="/games/mcq-shooter.html"
+            title="MCQ Shooter Game"
+            style={{
+              width: "600px",
+              height: "540px",
+              display: "block",
+              border: 0,
+              margin: 0,
+              padding: 0,
+              overflow: "hidden"
+            }}
+            loading="eager"
+            scrolling="no"
+          />
         </div>
       </section>
 

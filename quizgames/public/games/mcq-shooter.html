@@ -1,0 +1,561 @@
+<!doctype html>
+<!-- ======================= index.html ======================= -->
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>HTML5 Canvas Game Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- ======================= style.css ======================= -->
+    <style>
+        :root {
+            /* Consistent, tweakable theme (override as needed) */
+            --bg: #0f1220;
+            --panel: #161a2e;
+            --ink: #e6eaf2;
+            --muted: #a0a6b0;
+            --accent: #8ab4f8;
+            --good: #3ccb7f;
+            --bad: #ff6b6b;
+            --border: #23294d;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #000000;
+            color: var(--ink);
+            font: 16px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .wrap {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            background: #000000;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            image-rendering: pixelated;
+            outline: none;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, .35),
+                inset 0 0 0 1px rgba(255, 255, 255, .02);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <!-- Required dimensions -->
+        <canvas id="game" width="600" height="540" tabindex="0" aria-label="Game canvas"></canvas>
+    </div>
+
+    <!-- ======================= core.js ======================= -->
+    <script>
+        ; (() => {
+            // ---- Registration API and start gate ----
+            let __hooks = null, __domReady = false, __started = false;
+
+            function tryStart() {
+                if (__domReady && __hooks && !__started) {
+                    const canvas = document.getElementById('game');
+                    canvas.focus();
+                    window.engine = makeEngine(canvas, __hooks);
+                    __started = true;
+                }
+            }
+
+            // ---- Theme (applied to CSS variables) ----
+            const THEME = {
+                bg: getCss('--bg'),
+                panel: getCss('--panel'),
+                ink: getCss('--ink'),
+                muted: getCss('--muted'),
+                accent: getCss('--accent'),
+                good: getCss('--good'),
+                bad: getCss('--bad'),
+                border: getCss('--border'),
+            };
+            function getCss(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+            // ---- Placeholder question object (example) ----
+            // Use/replace this in your game logic if you build quiz-style games.
+
+            // MULTIPLE CHOICE EXAMPLE:
+            const QUESTION = {
+                type: "mcq",
+                prompt: "Which planet is known as the Red Planet?",
+                choices: [
+                    { text: "Venus", is_correct: false, explanation: "Similar in size to Earth, not the Red Planet." },
+                    { text: "Mars", is_correct: true, explanation: "Appears red due to iron oxide dust." },
+                    { text: "Jupiter", is_correct: false, explanation: "Gas giant; multicolored bands, not red overall." },
+                    { text: "Mercury", is_correct: false, explanation: "Gray and closest to the Sun." }
+                ]
+            };
+
+            // TRUE/FALSE EXAMPLE (for games like slingshot goal):
+            // const QUESTION = {
+            //   type: "true_false",
+            //   prompt: "Lightning never strikes the same place twice.",
+            //   choices: [
+            //     { text: "True", is_correct: false, explanation: "Myth. Lightning frequently strikes the same tall objects multiple times." },
+            //     { text: "False", is_correct: true, explanation: "Correct. Landmarks like skyscrapers are struck repeatedly." }
+            //   ]
+            // };
+
+            // ---- Canvas helpers ----
+            function setupCanvas(ctx) {
+                ctx.imageSmoothingEnabled = false;
+                ctx.textBaseline = 'top';
+                ctx.font = '16px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+            }
+            function clear(ctx, theme) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+            function centeredText(ctx, text, y, size, color) {
+                const prev = ctx.font;
+                ctx.font = `${size}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+                ctx.fillStyle = color;
+                const w = ctx.canvas.width;
+                const m = ctx.measureText(text);
+                ctx.fillText(text, (w - m.width) / 2, y);
+                ctx.font = prev;
+            }
+            function wrappedCentered(ctx, text, x, y, maxW, size, lh, color) {
+                if (!text) return;
+                const prev = ctx.font;
+                ctx.font = `${size}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+                ctx.fillStyle = color;
+                const words = (text + '').split(/\s+/);
+                let line = '';
+                const lines = [];
+                for (const w of words) {
+                    const test = line ? line + ' ' + w : w;
+                    if (ctx.measureText(test).width <= maxW) line = test;
+                    else { lines.push(line); line = w; }
+                }
+                if (line) lines.push(line);
+                let yy = y;
+                const step = size * (lh || 1.35);
+                for (const L of lines) {
+                    const mw = ctx.measureText(L).width;
+                    ctx.fillText(L, x + (maxW - mw) / 2, yy);
+                    yy += step;
+                }
+                ctx.font = prev;
+            }
+
+            // ---- Standard End Game Screen (required) ----
+            // Call engine.end(true|false) to show it.
+            function drawEndScreen(ctx, theme, result) {
+                const W = ctx.canvas.width, H = ctx.canvas.height;
+                ctx.globalAlpha = 0.95;
+                ctx.fillStyle = theme.bg;
+                ctx.fillRect(0, 0, W, H);
+                ctx.globalAlpha = 1;
+
+                const isCorrect = (result === 'correct' || result === true);
+                const title = isCorrect ? 'Correct' : 'Incorrect';
+                const color = isCorrect ? theme.good : theme.bad;
+
+                centeredText(ctx, title, H * 0.33, 48, color);
+                centeredText(ctx, 'Press R for restart', H * 0.55, 18, theme.ink);
+            }
+
+            // ---- Minimal engine loop + hooks ----
+            function makeEngine(canvas, hooks) {
+                const ctx = canvas.getContext('2d');
+                setupCanvas(ctx);
+
+                const engine = {
+                    canvas, ctx, theme: THEME,
+                    state: 'playing',    // 'playing' | 'ended'
+                    result: null,        // 'correct' | 'incorrect'
+                    question: QUESTION,
+
+                    end(ok) {
+                        this.state = 'ended';
+                        this.result = ok ? 'correct' : 'incorrect';
+                    },
+                    restart() {
+                        this.state = 'playing';
+                        this.result = null;
+                        hooks.init(this);
+                    }
+                };
+
+                let last = performance.now();
+                function loop(now) {
+                    const dt = Math.min(66, now - last) / 1000;
+                    last = now;
+
+                    clear(ctx, THEME);
+
+                    if (engine.state === 'ended') {
+                        drawEndScreen(ctx, THEME, engine.result);
+                    } else {
+                        hooks.update(dt, engine);
+                        hooks.draw(ctx, engine);
+                    }
+                    requestAnimationFrame(loop);
+                }
+
+                window.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'r' || ev.key === 'R') {
+                        if (engine.state === 'ended') engine.restart();
+                    } else if (hooks.keydown) {
+                        hooks.keydown(ev, engine);
+                    }
+                });
+
+                hooks.init(engine);
+                requestAnimationFrame(loop);
+                return engine;
+            }
+
+            function drawTemplateHint(ctx, engine) {
+                const W = ctx.canvas.width, H = ctx.canvas.height;
+                centeredText(ctx, 'Add your game in script.js', H * 0.38, 22, engine.theme.muted);
+                wrappedCentered(
+                    ctx,
+                    'Define: window.gameInit(engine), window.gameUpdate(dt, engine), window.gameDraw(ctx, engine). ' +
+                    'Use engine.end(true|false, "optional explanation") to show the standard end screen.',
+                    40, H * 0.48, W - 80, 14, 1.35, engine.theme.ink
+                );
+            }
+
+            // Expose a tiny API if needed
+            window.GameCore = {
+                makeEngine,
+                drawEndScreen,
+                THEME,
+                QUESTION,
+                register(h) {
+                    __hooks = { init() { }, update() { }, draw() { }, keydown: null, ...h };
+                    tryStart();
+                }
+            };
+
+            window.addEventListener('DOMContentLoaded', () => {
+                __domReady = true;
+                tryStart();
+            });
+        })();
+    </script>
+
+    <!-- ======================= script.js (your game goes here) ======================= -->
+    <script>
+        /*
+    script.js — For you to add code to (do not change any of the code outside of script.js)
+    
+    HOOKS (prefer this):
+      GameCore.register({ init(engine), update(dt, engine), draw(ctx, engine), keydown(ev, engine?) })
+    Fallback if register isn't available:
+      window.gameInit / gameUpdate / gameDraw / gameKeyDown
+    
+    ENGINE BASICS:
+      engine.canvas (720x540), engine.ctx, engine.theme.{bg,panel,ink,muted,accent,good,bad,border}
+      engine.end(true|false) → shows "Correct"/"Incorrect" + "Press R for restart"
+      engine.question?.choices -> [{ text, is_correct, explanation }]
+      DO NOT render the question prompt or generic instructions — only choices' text if you need it.
+    
+    RENDERING / STYLE:
+      • Use integer positions for crisp 8-bit feel; keep fonts small (12–20px).
+      • Canvas size is fixed (720x540). Don't scale via CSS.
+      • Draw with theme colors for consistent look; imageSmoothing is already off.
+    
+    INPUT & CLEANUP:
+      • Add listeners in init(); store remover in engine._cleanup = () => {...}.
+      • Map clicks/keys as you wish, but keep 'R' for restart.
+      • If using mouse coords, convert clientX/Y → canvas space (account for CSS scale).
+    
+    QUIZ-LIKE GAMES:
+      • You may display ONLY choices[i].text.
+      • On selection: engine.end(choices[i].is_correct === true). End on any choice.
+      
+    TRUE/FALSE GAMES:
+      • Use type: "true_false" in question object.
+      • Always have exactly 2 choices: "True" and "False".
+      • Map choices by text: const choiceByText = Object.fromEntries(choices.map(c => [c.text.toLowerCase(), c]));
+      • Access via choiceByText["true"] or choiceByText["false"] for game logic.
+      • Example: slingshot games can have drifting paddles labeled "True"/"False".
+    
+    EMOJIS / SHAPES:
+      • Use emojis (🪙💥) as sprites via fillText, or shapes (rect/arc/lines).
+      • Keep UI minimal; no prompt/instruction text.
+    
+    SOUND (optional, 1–2 short blips):
+      • Create an AudioContext on first user input; play tiny square-wave beeps (low volume).
+      • Example idea: high beep on select, low beep on incorrect. Keep <0.12s.
+    
+    LOOP RULE:
+      • Put all game updates in update(dt) and visuals in draw(ctx). Avoid setInterval.
+    
+    — Minimal skeleton (comment out/remove when generating) —
+      // GameCore.register({
+      //   init(e){ /* setup state, add listeners; set e._cleanup */
+        //   update(dt,e){ /* move/animate using dt */ },
+        //   draw(ctx,e){ /* render; only choices' text if applicable */ },
+        //   keydown(ev,e){ /* handle input; call e.end(true/false) to finish */ }
+        // });
+
+        // WRITE YOUR CODE HERE
+        GameCore.register({
+            init(e) {
+                // --- Set the question (so you don't have to edit core.js) ---
+                e.question = {
+                    type: "mcq",
+                    prompt: "What is the capital of France?",
+                    choices: [
+                        { text: "Paris", is_correct: true, explanation: "Paris is the capital." },
+                        { text: "Lyon", is_correct: false, explanation: "Lyon is a major city, not the capital." },
+                        { text: "Marseille", is_correct: false, explanation: "Marseille is a major port city." },
+                        { text: "Nice", is_correct: false, explanation: "Nice is on the French Riviera." }
+                    ]
+                };
+
+                const W = e.canvas.width, H = e.canvas.height;
+
+                // --- Game state ---
+                const state = {
+                    keys: new Set(),
+                    player: {
+                        x: Math.floor(W / 2),
+                        y: H - 48,
+                        w: 48,
+                        h: 18,
+                        speed: 300,
+                        cooldown: 0,    // seconds
+                    },
+                    bullets: [],      // {x,y,v}
+                    enemies: [],      // {x,y,w,h,vx,vy,label,choice}
+                    rngSeed: (Date.now() & 0xffff) | 1,
+                    started: true
+                };
+
+                // Simple xorshift-ish RNG for deterministic-ish drift
+                function frand() {
+                    // returns [0,1)
+                    let s = state.rngSeed;
+                    s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
+                    state.rngSeed = s >>> 0;
+                    return (state.rngSeed % 10000) / 10000;
+                }
+
+                // Spawn 4 enemies mapped to choices
+                const labels = e.question.choices.map((c) => c.text);
+                const cols = 2, rows = 2;
+                const cellW = Math.floor(W / (cols + 1));
+                const cellH = Math.floor((H * 0.55) / (rows + 1));
+
+                for (let i = 0; i < e.question.choices.length; i++) {
+                    const c = e.question.choices[i];
+                    const ci = i % cols;
+                    const ri = Math.floor(i / cols);
+
+                    const w = 150, h = 40;
+                    const baseX = (ci + 1) * cellW;
+                    const baseY = (ri + 1) * cellH + 30;
+
+                    const x = Math.floor(baseX - w / 2 + (frand() - 0.5) * 40);
+                    const y = Math.floor(baseY - h / 2 + (frand() - 0.5) * 40);
+                    const vx = (frand() * 80 + 40) * (frand() < 0.5 ? -1 : 1);
+                    const vy = (frand() * 80 + 40) * (frand() < 0.5 ? -1 : 1);
+
+                    state.enemies.push({
+                        x, y, w, h, vx, vy,
+                        label: c.text,
+                        choice: c
+                    });
+                }
+
+                // Input handlers
+                const onKeyDown = (ev) => {
+                    if (e.state === 'ended') return;
+                    state.keys.add(ev.key);
+                    if (ev.key === ' ') shoot();
+                };
+                const onKeyUp = (ev) => state.keys.delete(ev.key);
+
+                function shoot() {
+                    if (state.player.cooldown > 0) return;
+                    state.bullets.push({
+                        x: Math.floor(state.player.x),
+                        y: Math.floor(state.player.y - state.player.h / 2),
+                        v: -520
+                    });
+                    state.player.cooldown = 0.22; // seconds
+                }
+
+                // Expose + cleanup
+                e._state = state;
+                e._cleanup = () => {
+                    window.removeEventListener('keydown', onKeyDown);
+                    window.removeEventListener('keyup', onKeyUp);
+                };
+                window.addEventListener('keydown', onKeyDown);
+                window.addEventListener('keyup', onKeyUp);
+            },
+
+            update(dt, e) {
+                const s = e._state;
+                if (!s) return;
+
+                // Player movement
+                const left = s.keys.has('ArrowLeft') || s.keys.has('a') || s.keys.has('A');
+                const right = s.keys.has('ArrowRight') || s.keys.has('d') || s.keys.has('D');
+
+                if (left && !right) s.player.x -= s.player.speed * dt;
+                else if (right && !left) s.player.x += s.player.speed * dt;
+
+                const W = e.canvas.width, H = e.canvas.height;
+                s.player.x = Math.max(20, Math.min(W - 20, s.player.x));
+
+                // Cooldown
+                if (s.player.cooldown > 0) s.player.cooldown = Math.max(0, s.player.cooldown - dt);
+
+                // Bullets
+                for (let i = s.bullets.length - 1; i >= 0; i--) {
+                    const b = s.bullets[i];
+                    b.y += b.v * dt;
+                    if (b.y < -10) s.bullets.splice(i, 1);
+                }
+
+                // Enemies drift + bounce
+                for (const en of s.enemies) {
+                    en.x += en.vx * dt;
+                    en.y += en.vy * dt;
+
+                    // bounce within a safe rectangle (allow movement over question text)
+                    const pad = 16;
+                    const topBoundary = 5; // Allow movement very close to top
+                    if (en.x < pad) { en.x = pad; en.vx *= -1; }
+                    if (en.y < topBoundary) { en.y = topBoundary; en.vy *= -1; }
+                    if (en.x + en.w > W - pad) { en.x = W - pad - en.w; en.vx *= -1; }
+                    if (en.y + en.h > H * 0.72) { en.y = H * 0.72 - en.h; en.vy *= -1; }
+                }
+
+                // Collisions bullet vs enemy
+                outer: for (let i = s.bullets.length - 1; i >= 0; i--) {
+                    const b = s.bullets[i];
+                    for (let j = 0; j < s.enemies.length; j++) {
+                        const en = s.enemies[j];
+                        if (rectContainsPoint(en.x, en.y, en.w, en.h, b.x, b.y)) {
+                            s.bullets.splice(i, 1);
+                            const ok = !!en.choice.is_correct;
+                            e.end(ok);
+                            break outer;
+                        }
+                    }
+                }
+
+                function rectContainsPoint(x, y, w, h, px, py) {
+                    return (px >= x && px <= x + w && py >= y && py <= y + h);
+                }
+            },
+
+            draw(ctx, e) {
+                const s = e._state;
+                if (!s) return;
+
+                const W = ctx.canvas.width, H = ctx.canvas.height;
+
+                // Question text at the top
+                ctx.fillStyle = e.theme.ink;
+                ctx.font = '18px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+                const questionText = "What is the capital of France?";
+                const questionWidth = ctx.measureText(questionText).width;
+                ctx.fillText(questionText, (W - questionWidth) / 2, 25);
+
+                // Subtle ground line
+                ctx.strokeStyle = e.theme.border;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(12, H - 28.5);
+                ctx.lineTo(W - 12, H - 28.5);
+                ctx.stroke();
+
+                // Player (simple triangle spaceship)
+                const p = s.player;
+                const px = Math.round(p.x), py = Math.round(p.y);
+                ctx.fillStyle = e.theme.accent;
+                ctx.beginPath();
+                ctx.moveTo(px, py - p.h / 2);
+                ctx.lineTo(px - p.w / 2, py + p.h / 2);
+                ctx.lineTo(px + p.w / 2, py + p.h / 2);
+                ctx.closePath();
+                ctx.fill();
+
+                // Bullets
+                ctx.fillStyle = e.theme.ink;
+                for (const b of s.bullets) {
+                    ctx.fillRect(Math.round(b.x - 2), Math.round(b.y - 8), 4, 10);
+                }
+
+                // Enemies (answer choices)
+                for (const en of s.enemies) {
+                    const x = Math.round(en.x), y = Math.round(en.y), r = 10;
+
+                    // bubble
+                    ctx.fillStyle = e.theme.panel;
+                    ctx.strokeStyle = e.theme.border;
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, x, y, en.w, en.h, r);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // label
+                    ctx.fillStyle = e.theme.ink;
+                    ctx.font = '14px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+                    const text = en.label;
+                    const mw = ctx.measureText(text).width;
+                    ctx.fillText(text, Math.round(x + (en.w - mw) / 2), Math.round(y + (en.h - 14) / 2));
+                }
+
+                // Minimal controls hint (tiny, unobtrusive)
+                ctx.fillStyle = e.theme.muted;
+                ctx.font = '12px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+                ctx.fillText('← → move    Space shoot    R restart', 12, H - 22);
+
+                function roundRect(ctx, x, y, w, h, r) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.lineTo(x + w - r, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                    ctx.lineTo(x + w, y + h - r);
+                    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    ctx.lineTo(x + r, y + h);
+                    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                    ctx.lineTo(x + r, y);
+                    ctx.quadraticCurveTo(x, y, x + r, y);
+                    ctx.closePath();
+                }
+            },
+
+            keydown(ev, e) {
+                // handled in init() for shooting; keep here if you want extras later
+            }
+        });
+
+
+    </script>
+</body>
+
+</html>
