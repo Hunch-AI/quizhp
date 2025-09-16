@@ -143,10 +143,10 @@ export default function UploadPage() {
               border: 0,
               margin: 0,
               padding: 0,
-              overflow: "hidden"
+              overflow: "hidden",
+              borderRadius: 28
             }}
             loading="eager"
-            scrolling="no"
           />
         </div>
       </section>

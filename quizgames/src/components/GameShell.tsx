@@ -38,7 +38,7 @@ export default function GameShell({
     setFeedback(null);
   }, [srcDoc]);
 
-  const progress = ((index + 1) / Math.max(1, total)) * 100;
+  const progress = (index / Math.max(1, total - 1)) * 100;
 
   const parsedControls: Control[] = useMemo(() => {
     if (Array.isArray(controls)) return controls as Control[];
@@ -56,36 +56,45 @@ export default function GameShell({
   return (
     <div className="container">
       {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <button className="btn" onClick={() => router.push('/')}>Exit Game</button>
-        {/* Keep it simple; sound toggle can be added later */}
-      </div>
-
-      {/* Question prompt */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <div className="card" style={{ width: '100%', maxWidth: 640, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 600 }}>{title}</div>
+      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 16, flexShrink: 0 }}>
+        {/* Left: Exit button aligned with feedback */}
+        <div style={{ width: 240, flexShrink: 0, display: 'flex', justifyContent: 'flex-start' }}>
+          <button className="btn" onClick={() => router.push('/')}>Exit Game</button>
         </div>
+
+        {/* Center: Empty space for question */}
+        <div style={{ width: 720, flexShrink: 0 }}></div>
+
+        {/* Right: Empty space for instructions/controls */}
+        <div style={{ width: 240, flexShrink: 0 }}></div>
       </div>
 
-      {/* Main area */}
-      <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
+      {/* Main content area - takes remaining space */}
+      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0, justifyContent: 'center' }}>
         {/* Left: Feedback */}
-        <div style={{ width: 256, flexShrink: 0 }} className="card">
-          <div style={{ padding: 16 }}>
+        <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="card" style={{ padding: 16, flex: 1 }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Feedback</div>
             <p style={{ fontSize: 14, opacity: 0.85, margin: 0 }}>
               {feedback
                 ? (feedback.isCorrect ? '✅ Correct. ' : '❌ Incorrect. ') +
-                  (feedback.explanation || '')
+                (feedback.explanation || '')
                 : 'Play the game — your feedback will appear here when you make a selection.'}
             </p>
           </div>
         </div>
 
-        {/* Center: Game */}
-        <div style={{ flex: 1 }} className="card">
-          <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+        {/* Center: Question + Game */}
+        <div style={{ width: 720, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {/* Question prompt - directly above game */}
+          <div style={{ marginBottom: 16, flexShrink: 0 }}>
+            <div className="card" style={{ padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 600 }}>{title}</div>
+            </div>
+          </div>
+
+          {/* Game container - centered */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0 }}>
             <GameRuntimeIframe
               srcDoc={srcDoc}
               onChoice={(p) => setFeedback({ isCorrect: p.isCorrect, explanation: p.explanation })}
@@ -94,24 +103,24 @@ export default function GameShell({
         </div>
 
         {/* Right: Instructions & Controls */}
-        <div style={{ width: 256, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="card" style={{ padding: 16 }}>
+        <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card" style={{ padding: 16, flex: 1 }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Instructions</div>
             <p style={{ fontSize: 14, opacity: 0.85, margin: 0 }}>
               {instructions || '—'}
             </p>
           </div>
 
-          <div className="card" style={{ padding: 16 }}>
+          <div className="card" style={{ padding: 16, flex: 1 }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Controls</div>
             <div style={{ fontSize: 14, opacity: 0.85, display: 'grid', gap: 8 }}>
               {parsedControls.length
                 ? parsedControls.map((c, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                      <span>{c.type || (c.keys ? c.keys.join(', ') : '—')}</span>
-                      <span>{c.description || '—'}</span>
-                    </div>
-                  ))
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span>{c.type || (c.keys ? c.keys.join(', ') : '—')}</span>
+                    <span>{c.description || '—'}</span>
+                  </div>
+                ))
                 : <span>—</span>}
             </div>
           </div>
@@ -119,20 +128,22 @@ export default function GameShell({
       </div>
 
       {/* Bottom: Progress + Prev/Next */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn" onClick={onPrev} disabled={index === 0}>Previous</button>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: 720 }}>
+          <button className="btn" onClick={onPrev} disabled={index === 0}>Previous</button>
 
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, opacity: 0.85, marginBottom: 6 }}>
-            <span>Question {index + 1} of {total}</span>
-            <span>{Math.round(progress)}% Complete</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, opacity: 0.85, marginBottom: 6 }}>
+              <span>Question {index + 1} of {total}</span>
+              <span>{Math.round(progress)}% Complete</span>
+            </div>
+            <div className="border rounded" style={{ height: 8, overflow: 'hidden' }}>
+              <div style={{ width: `${progress}%`, height: '100%', background: 'var(--ink)' }} />
+            </div>
           </div>
-          <div className="border rounded" style={{ height: 8, overflow: 'hidden' }}>
-            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--ink)' }} />
-          </div>
+
+          <button className="btn" onClick={onNext} disabled={index + 1 >= total}>Next</button>
         </div>
-
-        <button className="btn" onClick={onNext} disabled={index + 1 >= total}>Next</button>
       </div>
     </div>
   );
