@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import GameRuntimeIframe from './GameRuntimeIframe';
+import Controls from './Controls';
 
 type Control = { type?: string; keys?: string[]; description?: string };
 
@@ -40,18 +41,6 @@ export default function GameShell({
 
   const progress = (index / Math.max(1, total - 1)) * 100;
 
-  const parsedControls: Control[] = useMemo(() => {
-    if (Array.isArray(controls)) return controls as Control[];
-    if (typeof controls === 'string') {
-      try {
-        const v = JSON.parse(controls);
-        return Array.isArray(v) ? (v as Control[]) : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  }, [controls]);
 
   return (
     <div className="container">
@@ -111,19 +100,7 @@ export default function GameShell({
             </p>
           </div>
 
-          <div className="card" style={{ padding: 16, flex: 1 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Controls</div>
-            <div style={{ fontSize: 14, opacity: 0.85, display: 'grid', gap: 8 }}>
-              {parsedControls.length
-                ? parsedControls.map((c, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span>{c.type || (c.keys ? c.keys.join(', ') : '—')}</span>
-                    <span>{c.description || '—'}</span>
-                  </div>
-                ))
-                : <span>—</span>}
-            </div>
-          </div>
+          <Controls controls={controls} />
         </div>
       </div>
 
