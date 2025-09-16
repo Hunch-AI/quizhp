@@ -34,6 +34,13 @@ export default function GameRuntimeIframe({ srcDoc, onChoice }: Props) {
     return () => window.removeEventListener('message', handler);
   }, [onChoice]);
 
+  // Ensure iframe gets focus when it loads to enable autostart
+  useEffect(() => {
+    if (frameRef.current) {
+      frameRef.current.focus();
+    }
+  }, [srcDoc]);
+
   return (
     <iframe
       key={hashKey(srcDoc)}            // ensure clean remount when code changes
@@ -41,7 +48,7 @@ export default function GameRuntimeIframe({ srcDoc, onChoice }: Props) {
       width={720}
       height={540}
       className="border rounded"
-      sandbox="allow-scripts allow-pointer-lock"
+      sandbox="allow-scripts allow-pointer-lock allow-same-origin"
       srcDoc={srcDoc}
     />
   );

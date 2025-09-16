@@ -11,7 +11,7 @@
   <style>
     :root {
       /* Consistent, tweakable theme (override as needed) */
-      --bg: #0f1220;
+      --bg: #000000;
       --panel: #161a2e;
       --ink: #e6eaf2;
       --muted: #a0a6b0;
@@ -43,12 +43,12 @@
     }
 
     canvas {
-      background: var(--panel);
+      background: var(--bg);
       image-rendering: pixelated;
       outline: none;
       display: block;
       /* avoid stray inline gaps */
-      /* No border/radius/shadow so there’s no inner frame */
+      /* No border/radius/shadow so there's no inner frame */
     }
 
     .caption {
@@ -114,7 +114,7 @@
         ctx.font = '16px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
       }
       function clear(ctx, theme) {
-        ctx.fillStyle = theme.panel;
+        ctx.fillStyle = theme.bg;
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       }
       function centeredText(ctx, text, y, size, color) {
